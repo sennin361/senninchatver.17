@@ -2,97 +2,33 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>仙人チャット</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <script defer src="client.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background: #eef2f3;
-      margin: 0;
-      padding: 20px;
-    }
-    #joinArea, #chatArea {
-      max-width: 600px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    h2 {
-      text-align: center;
-    }
-    #messages {
-      height: 300px;
-      overflow-y: auto;
-      background: #f9f9f9;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    .bubble {
-      max-width: 70%;
-      padding: 10px;
-      margin: 5px 0;
-      border-radius: 15px;
-      position: relative;
-      display: inline-block;
-      word-wrap: break-word;
-    }
-    .my-bubble {
-      background-color: #cce5ff;
-      float: right;
-      text-align: right;
-    }
-    .other-bubble {
-      background-color: #e0e0e0;
-      float: left;
-      text-align: left;
-    }
-    .message {
-      clear: both;
-      margin-bottom: 10px;
-    }
-    .nickname {
-      font-weight: bold;
-      margin-bottom: 5px;
-      display: block;
-    }
-    .read-label {
-      font-size: 0.75em;
-      color: green;
-      margin-top: 3px;
-      display: block;
-    }
-    input[type="text"], input[type="file"], button {
-      width: 100%;
-      padding: 10px;
-      margin: 5px 0;
-      box-sizing: border-box;
-    }
-    img, video {
-      max-width: 100%;
-      border-radius: 8px;
-      margin-top: 5px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <div id="joinArea">
-    <h2>仙人チャットへ参加</h2>
-    <input type="text" id="nickname" placeholder="ニックネーム">
-    <input type="text" id="room" placeholder="ルーム名">
-    <button id="joinBtn">参加</button>
+  <div id="login" class="center">
+    <h1>仙人チャットへようこそ</h1>
+    <input id="nameInput" type="text" placeholder="名前を入力">
+    <input id="roomInput" type="text" placeholder="あいことば（ルーム）">
+    <button onclick="joinChat()">参加する</button>
   </div>
 
-  <div id="chatArea" style="display: none;">
-    <h2>チャットルーム</h2>
+  <div id="chat" class="hidden">
+    <div id="header">
+      <span id="roomName"></span>
+      <button onclick="leaveChat()">退室</button>
+    </div>
     <div id="messages"></div>
-    <input type="text" id="input" placeholder="メッセージを入力">
-    <input type="file" id="mediaInput" accept="image/*,video/*">
-    <button id="sendBtn">送信</button>
+
+    <div id="form">
+      <input type="text" id="messageInput" placeholder="メッセージを入力">
+      <input type="file" id="mediaInput" accept="image/*,video/*">
+      <button onclick="sendMessage()">送信</button>
+    </div>
   </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
