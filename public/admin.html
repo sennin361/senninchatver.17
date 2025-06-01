@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>管理画面 - 仙人メッセージ</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css">
+  <style>
+    body {
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    #logs {
+      height: 200px;
+      overflow-y: auto;
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>🛡 管理画面 - 仙人メッセージ</h1>
+
+  <div class="card">
+    <label>パスワード:</label>
+    <input type="password" id="adminPassword" placeholder="管理者パスワード">
+  </div>
+
+  <div class="card">
+    <label>📢 全体メッセージ送信</label>
+    <input type="text" id="broadcastMessage" placeholder="全体に送るメッセージ">
+    <button onclick="sendBroadcast()">送信</button>
+  </div>
+
+  <div class="card">
+    <label>🚪 ルーム別送信</label>
+    <input type="text" id="roomName" placeholder="ルーム名">
+    <input type="text" id="roomMessage" placeholder="ルームへのメッセージ">
+    <button onclick="sendToRoom()">送信</button>
+  </div>
+
+  <div class="card">
+    <label>🧯 ユーザーBAN</label>
+    <input type="text" id="banUsername" placeholder="BANしたいユーザー名">
+    <button onclick="banUser()">BAN</button>
+  </div>
+
+  <div class="card">
+    <label>🧹 チャットログ全削除</label>
+    <button onclick="resetServer()">リセット</button>
+  </div>
+
+  <div class="card">
+    <label>📖 チャットログ一覧</label>
+    <div id="logs">ログ読み込み中...</div>
+  </div>
+
+  <div class="card">
+    <label>🧠 あいことば一覧</label>
+    <div id="keywords">取得中...</div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
