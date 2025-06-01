@@ -1,106 +1,128 @@
-const express = require('express');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const fs = require('fs');
-const path = require('path');
+const server = http.createServer(app);
+const io = new Server(server);
 
-const ADMIN_PASSWORD = 'sennin25251515';
-let chatLog = [];
+const PORT = process.env.PORT || 3000;
+
+app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
+
+const adminPassword = "sennin25251515";
+let maintenanceMode = false;
+
+let users = {};      // socket.id -> { name, room }
+let rooms = {};      // roomName -> [messages]
 let bannedUsers = new Set();
-let userRooms = {};
-let socketUsernames = {};
 
-app.use(express.static('public'));
+// 管理者ログイン
+app.post("/admin/login", (req, res) => {
+  const { password } = req.body;
+  if (password === adminPassword) {
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
+});
 
-io.on('connection', (socket) => {
-  console.log('接続:', socket.id);
+// 接続ユーザー数
+app.get("/admin/users", (req, res) => {
+  res.json({ count: Object.keys(users).length });
+});
 
-  socket.on('join', ({ nickname, room }) => {
-    if (bannedUsers.has(nickname)) {
-      socket.emit('banned');
+// 全チャットログ取得
+app.get("/admin/logs", (req, res) => {
+  res.json({ logs: rooms });
+});
+
+// サーバーリセット
+app.post("/admin/reset", (req, res) => {
+  rooms = {};
+  bannedUsers = new Set();
+  io.emit("system", "💥 サーバーがリセットされました");
+  res.json({ success: true });
+});
+
+// メンテナンス切替
+app.post("/admin/maintenance", (req, res) => {
+  const { status } = req.body;
+  maintenanceMode = status;
+  io.emit("maintenance", maintenanceMode);
+  res.json({ success: true });
+});
+
+// BAN処理
+app.post("/admin/ban", (req, res) => {
+  const { name } = req.body;
+  const target = Object.entries(users).find(([id, u]) => u.name === name);
+  if (target) {
+    const [id, u] = target;
+    bannedUsers.add(name);
+    io.to(id).emit("banned");
+    io.to(u.room).emit("system", `⚠️ ${name} はBANされました`);
+    io.sockets.sockets.get(id).disconnect();
+    delete users[id];
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
+});
+
+// 一斉送信
+app.post("/admin/broadcast", (req, res) => {
+  const { text } = req.body;
+  io.emit("message", { user: "【管理者】", msg: text, type: "text" });
+  res.json({ success: true });
+});
+
+io.on("connection", (socket) => {
+  socket.on("join", ({ name, room }) => {
+    if (maintenanceMode) {
+      socket.emit("maintenance", true);
       return;
     }
+    if (bannedUsers.has(name)) {
+      socket.emit("banned");
+      return;
+    }
+
+    users[socket.id] = { name, room };
     socket.join(room);
-    userRooms[socket.id] = room;
-    socketUsernames[socket.id] = nickname;
-    const joinMsg = `${nickname} が ${room} に入室`;
-    io.to(room).emit('message', { nickname: 'SYSTEM', message: joinMsg, type: 'text' });
-    chatLog.push(joinMsg);
+
+    if (!rooms[room]) rooms[room] = [];
+    socket.emit("system", `🌿 ようこそ ${name} さん`);
+    socket.to(room).emit("system", `👤 ${name} さんが入室しました`);
   });
 
-  socket.on('message', (data) => {
-    const room = userRooms[socket.id];
-    const nickname = socketUsernames[socket.id];
-    if (!room || !nickname) return;
+  socket.on("message", (msg, room) => {
+    const user = users[socket.id];
+    if (!user) return;
+    const { name } = user;
 
-    io.to(room).emit('message', { ...data, nickname });
-    chatLog.push(`[${nickname}] ${data.type === 'text' ? data.message : '[ファイル]'}`);
+    const entry = {
+      user: name,
+      msg: msg.text || "",
+      type: msg.type || "text",
+      data: msg.data || null,
+    };
+
+    rooms[room] = rooms[room] || [];
+    rooms[room].push(entry);
+    io.to(room).emit("message", entry);
   });
 
-  socket.on('disconnect', () => {
-    const nickname = socketUsernames[socket.id];
-    const room = userRooms[socket.id];
-    if (room && nickname) {
-      const msg = `${nickname} が ${room} を退出`;
-      io.to(room).emit('message', { nickname: 'SYSTEM', message: msg, type: 'text' });
-      chatLog.push(msg);
+  socket.on("disconnect", () => {
+    const user = users[socket.id];
+    if (user) {
+      socket.to(user.room).emit("system", `👋 ${user.name} さんが退室しました`);
+      delete users[socket.id];
     }
-    delete userRooms[socket.id];
-    delete socketUsernames[socket.id];
-  });
-
-  // 管理者機能
-  socket.on('admin_broadcast', ({ password, message }) => {
-    if (password !== ADMIN_PASSWORD) return socket.emit('admin_error', '認証失敗');
-    io.emit('message', { nickname: '管理者', message, type: 'text' });
-    chatLog.push(`[管理者] ${message}`);
-  });
-
-  socket.on('admin_room_message', ({ password, room, message }) => {
-    if (password !== ADMIN_PASSWORD) return socket.emit('admin_error', '認証失敗');
-    io.to(room).emit('message', { nickname: '管理者', message, type: 'text' });
-    chatLog.push(`[管理者→${room}] ${message}`);
-  });
-
-  socket.on('admin_ban_user', ({ password, username }) => {
-    if (password !== ADMIN_PASSWORD) return socket.emit('admin_error', '認証失敗');
-    bannedUsers.add(username);
-    for (let [id, name] of Object.entries(socketUsernames)) {
-      if (name === username) {
-        io.to(id).emit('banned');
-        io.sockets.sockets.get(id)?.disconnect();
-      }
-    }
-    chatLog.push(`[管理者] ${username} をBAN`);
-  });
-
-  socket.on('admin_reset', ({ password }) => {
-    if (password !== ADMIN_PASSWORD) return socket.emit('admin_error', '認証失敗');
-    chatLog = [];
-    bannedUsers.clear();
-    chatLog.push('[管理者] チャットログを全削除');
-    io.emit('message', { nickname: 'SYSTEM', message: 'チャット履歴が管理者によりリセットされました', type: 'text' });
-  });
-
-  socket.on('admin_get_logs', ({ password }) => {
-    if (password !== ADMIN_PASSWORD) return socket.emit('admin_error', '認証失敗');
-    socket.emit('admin_log', chatLog.slice(-50));
-  });
-
-  socket.on('admin_get_keywords', ({ password }) => {
-    if (password !== ADMIN_PASSWORD) return socket.emit('admin_error', '認証失敗');
-    const words = chatLog
-      .filter(l => !l.includes('[ファイル]'))
-      .flatMap(l => l.split(/\s|　|[。、！]/))
-      .filter(w => w.length > 3);
-    const freq = {};
-    words.forEach(w => freq[w] = (freq[w] || 0) + 1);
-    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10).map(w => w[0]);
-    socket.emit('admin_keywords', sorted);
   });
 });
 
-http.listen(process.env.PORT || 3000, () => {
-  console.log('サーバー起動中');
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
