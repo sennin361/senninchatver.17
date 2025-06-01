@@ -1,46 +1,73 @@
-const socket = io();
-let password = '';
-
-document.getElementById('adminPassword').addEventListener('input', (e) => {
-  password = e.target.value;
-});
-
-function sendBroadcast() {
-  const msg = document.getElementById('broadcastMessage').value;
-  socket.emit('admin_broadcast', { password, message: msg });
-}
-
-function sendToRoom() {
-  const room = document.getElementById('roomName').value;
-  const msg = document.getElementById('roomMessage').value;
-  socket.emit('admin_room_message', { password, room, message: msg });
-}
-
-function banUser() {
-  const username = document.getElementById('banUsername').value;
-  socket.emit('admin_ban_user', { password, username });
-}
-
-function resetServer() {
-  if (confirm('本当に全チャット履歴を削除しますか？')) {
-    socket.emit('admin_reset', { password });
+async function login() {
+  const password = document.getElementById("adminPassword").value;
+  const res = await fetch("/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("adminPanel").style.display = "block";
+    loadUserCount();
+  } else {
+    document.getElementById("loginStatus").textContent = "パスワードが間違っています。";
   }
 }
 
-socket.on('admin_log', data => {
-  document.getElementById('logs').textContent = data.join('\n');
-});
+async function loadUserCount() {
+  const res = await fetch("/admin/users");
+  const data = await res.json();
+  document.getElementById("userCount").textContent = data.count + " 人接続中";
+}
 
-socket.on('admin_keywords', data => {
-  document.getElementById('keywords').textContent = data.join(', ');
-});
+async function broadcast() {
+  const text = document.getElementById("broadcastText").value;
+  await fetch("/admin/broadcast", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  alert("一斉送信しました");
+  document.getElementById("broadcastText").value = "";
+}
 
-socket.on('admin_error', msg => {
-  alert("管理エラー: " + msg);
-});
+async function banUser() {
+  const name = document.getElementById("banName").value;
+  const res = await fetch("/admin/ban", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (res.ok) {
+    alert(`${name} をBANしました`);
+    document.getElementById("banName").value = "";
+  } else {
+    alert("BANできませんでした");
+  }
+}
 
-// 起動時にログとキーワード取得
-setInterval(() => {
-  socket.emit('admin_get_logs', { password });
-  socket.emit('admin_get_keywords', { password });
-}, 3000);
+async function toggleMaintenance(status) {
+  await fetch("/admin/maintenance", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  alert("メンテナンスモードを " + (status ? "開始" : "解除") + " しました");
+}
+
+async function resetServer() {
+  if (confirm("本当にサーバーをリセットしますか？全てのチャット履歴が削除されます。")) {
+    await fetch("/admin/reset", { method: "POST" });
+    alert("サーバーをリセットしました");
+  }
+}
+
+async function loadLogs() {
+  const res = await fetch("/admin/logs");
+  const data = await res.json();
+  const output = Object.entries(data.logs)
+    .map(([room, messages]) => `【${room}】\n` + messages.map(m => `(${m.user}) ${m.msg}`).join("\n"))
+    .join("\n\n");
+  document.getElementById("logOutput").value = output;
+}
