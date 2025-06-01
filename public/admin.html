@@ -2,79 +2,66 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>管理画面 - 仙人メッセージ</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>仙人チャット 管理画面</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    body {
-      padding: 2rem;
-      background: #f9f9f9;
-    }
-    h1 {
-      color: #2c3e50;
-      margin-bottom: 2rem;
-    }
-    .card {
-      background: #fff;
-      padding: 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 2rem;
-    }
-    #logs {
-      height: 200px;
-      overflow-y: auto;
-      background: #f4f4f4;
-      padding: 1rem;
-      border-radius: 4px;
-      font-family: monospace;
-      white-space: pre-wrap;
-    }
+    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+    h1 { color: #2c3e50; }
+    #adminPanel { display: none; margin-top: 20px; }
+    textarea { width: 100%; height: 200px; }
+    input, button { margin: 5px 0; padding: 10px; width: 100%; }
+    .btn { background: #4caf50; color: white; border: none; cursor: pointer; }
+    .btn.danger { background: #e74c3c; }
+    .btn.secondary { background: #3498db; }
+    .section { margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
-  <h1>🛡 管理画面 - 仙人メッセージ</h1>
+  <h1>仙人チャット 管理画面</h1>
 
-  <div class="card">
-    <label>パスワード:</label>
-    <input type="password" id="adminPassword" placeholder="管理者パスワード">
+  <div id="loginSection" class="section">
+    <input type="password" id="adminPassword" placeholder="管理者パスワードを入力" />
+    <button class="btn" onclick="login()">ログイン</button>
+    <p id="loginStatus" style="color: red;"></p>
   </div>
 
-  <div class="card">
-    <label>📢 全体メッセージ送信</label>
-    <input type="text" id="broadcastMessage" placeholder="全体に送るメッセージ">
-    <button onclick="sendBroadcast()">送信</button>
+  <div id="adminPanel">
+    <div class="section">
+      <h2>接続ユーザー数</h2>
+      <p id="userCount">読み込み中...</p>
+    </div>
+
+    <div class="section">
+      <h2>一斉送信</h2>
+      <input type="text" id="broadcastText" placeholder="全体に送信するメッセージ" />
+      <button class="btn secondary" onclick="broadcast()">一斉送信</button>
+    </div>
+
+    <div class="section">
+      <h2>ユーザーBAN</h2>
+      <input type="text" id="banName" placeholder="BANしたいユーザー名" />
+      <button class="btn danger" onclick="banUser()">BANする</button>
+    </div>
+
+    <div class="section">
+      <h2>メンテナンスモード</h2>
+      <button class="btn" onclick="toggleMaintenance(true)">開始</button>
+      <button class="btn" onclick="toggleMaintenance(false)">解除</button>
+    </div>
+
+    <div class="section">
+      <h2>サーバーリセット</h2>
+      <button class="btn danger" onclick="resetServer()">全データ消去</button>
+    </div>
+
+    <div class="section">
+      <h2>チャットログ一覧</h2>
+      <button class="btn secondary" onclick="loadLogs()">読み込み</button>
+      <textarea readonly id="logOutput"></textarea>
+    </div>
   </div>
 
-  <div class="card">
-    <label>🚪 ルーム別送信</label>
-    <input type="text" id="roomName" placeholder="ルーム名">
-    <input type="text" id="roomMessage" placeholder="ルームへのメッセージ">
-    <button onclick="sendToRoom()">送信</button>
-  </div>
-
-  <div class="card">
-    <label>🧯 ユーザーBAN</label>
-    <input type="text" id="banUsername" placeholder="BANしたいユーザー名">
-    <button onclick="banUser()">BAN</button>
-  </div>
-
-  <div class="card">
-    <label>🧹 チャットログ全削除</label>
-    <button onclick="resetServer()">リセット</button>
-  </div>
-
-  <div class="card">
-    <label>📖 チャットログ一覧</label>
-    <div id="logs">ログ読み込み中...</div>
-  </div>
-
-  <div class="card">
-    <label>🧠 あいことば一覧</label>
-    <div id="keywords">取得中...</div>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>
